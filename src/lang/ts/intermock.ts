@@ -181,8 +181,7 @@ function processFunctionPropertyType(
       processPropertyTypeReference(
         node, tempBody, 'body', typeName,
         returnType.kind, sourceFile, options, types);
-
-      body = `return ${stringify(tempBody['body'])}`;
+      body = `return ${typeName.startsWith('Promise<') ? tempBody['body'] : stringify(tempBody['body'])}`;
       break;
     case ts.SyntaxKind.VoidKeyword:
       body = '';
@@ -260,11 +259,16 @@ function processPropertyTypeReference(
   options: Options, types: Types) {
   let normalizedTypeName: string;
   let isArray = false;
+  let isPromise = false;
 
   if (typeName.startsWith('Array<') || typeName.startsWith('IterableArray<')) {
     normalizedTypeName =
       typeName.replace(/(Array|IterableArray)\</, '').replace('>', '');
     isArray = true;
+  } else if (typeName.startsWith('Promise<')) {
+    normalizedTypeName =
+      typeName.replace(/Promise\</, '').replace('>', '');
+    isPromise = true;
   } else {
     normalizedTypeName = typeName;
   }
@@ -284,6 +288,12 @@ function processPropertyTypeReference(
   if (normalizedTypeName !== typeName && isArray) {
     const kind: ts.SyntaxKind = typeNameToKind[normalizedTypeName];
     processArrayPropertyType(
+      node, output, property, normalizedTypeName, kind, sourceFile, options, types);
+    return;
+  }
+
+  if (normalizedTypeName !== typeName && isPromise) {
+    processPromisePropertyType(
       node, output, property, normalizedTypeName, kind, sourceFile, options, types);
     return;
   }
@@ -405,6 +415,31 @@ function processJsDocs(
 
 function normalizeNamespaceTypeName(typeName: string) {
   return typeName.replace(/[a-zA-Z0-9]+\.([a-zA-Z0-9]+)/g, '$1');
+}
+
+/**
+ * Process an promise definitiony.
+ *
+ * @param node Node being processed
+ * @param output The object outputted by Intermock after all types are mocked
+ * @param property Output property to write to
+ * @param typeName Type name of property
+ * @param kind TS data type of property type
+ * @param sourceFile TypeScript AST object compiled from file data
+ * @param options Intermock general options object
+ * @param types Top-level types of interfaces/aliases etc.
+ */
+function processPromisePropertyType(
+  node: ts.PropertySignature | ts.TypeNode, output: Output, property: string,
+  typeName: string, kind: ts.SyntaxKind, sourceFile: ts.SourceFile,
+  options: Options, types: Types) {
+  const isArray: boolean = typeName.includes('[]') ? true : false;
+  typeName = typeName.replace(/\[\]/, '');
+  kind = typeNameToKind[typeName];
+  const mock = isArray
+    ? resolveArrayType(node, property, typeName, kind, sourceFile, options, types)
+    : generatePrimitive(property, kind, options);
+  output[property] = `Promise.reslove(${JSON.stringify(mock)})`;
 }
 
 /**
