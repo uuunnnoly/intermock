@@ -480,7 +480,7 @@ function resolveArrayType(
   const isPrimitiveType = kind === ts.SyntaxKind.StringKeyword ||
     kind === ts.SyntaxKind.BooleanKeyword ||
     kind === ts.SyntaxKind.NumberKeyword;
-
+  const isTypeReference = kind === ts.SyntaxKind.TypeReference;
   const arrayRange = options.isFixedMode ?
     FIXED_ARRAY_COUNT :
     randomRange(DEFAULT_ARRAY_RANGE[0], DEFAULT_ARRAY_RANGE[1]);
@@ -488,7 +488,13 @@ function resolveArrayType(
   for (let i = 0; i < arrayRange; i++) {
     if (isPrimitiveType) {
       result.push(generatePrimitive(property, kind, options, ''));
-    } else {
+    }
+    else if (isTypeReference) {
+      const cache: Record<string, any> = {};
+      processPropertyTypeReference(node, cache, 'body', typeName, kind, sourceFile, options, types);
+      result.push(cache['body']);
+    }
+    else {
       const cache = {};
       processFile(sourceFile, cache, options, types, typeName);
       result.push(cache);
@@ -797,7 +803,7 @@ function setEnum(
   }
 
   const members = (node as ts.EnumDeclaration).members;
-  const selectedMemberIdx = Math.floor(members.length / 2);
+  const selectedMemberIdx = Math.floor(Math.random() * (members.length));
   const selectedMember = members[selectedMemberIdx];
 
   // TODO handle bitwise initializers
