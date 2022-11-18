@@ -16,7 +16,7 @@
 import ts from 'typescript';
 
 import { DEFAULT_ARRAY_RANGE, FIXED_ARRAY_COUNT } from '../../lib/constants';
-import { defaultTypeToMock, supportedPrimitiveTypes } from '../../lib/default-type-to-mock';
+import { defaultTypeToMock, supportedPrimitiveTypes, typeNameToKind } from '../../lib/default-type-to-mock';
 import { fake } from '../../lib/fake';
 import { randomRange } from '../../lib/random-range';
 import { smartProps } from '../../lib/smart-props';
@@ -177,9 +177,9 @@ function processFunctionPropertyType(
   switch (returnType.kind) {
     case ts.SyntaxKind.TypeReference:
       const tempBody: Record<string, {}> = {};
+      const typeName: ts.Identifier = returnType.getText();
       processPropertyTypeReference(
-        node, tempBody, 'body',
-        ((returnType as ts.TypeReferenceNode).typeName as ts.Identifier).text,
+        node, tempBody, 'body', typeName,
         returnType.kind, sourceFile, options, types);
 
       body = `return ${stringify(tempBody['body'])}`;
@@ -282,9 +282,9 @@ function processPropertyTypeReference(
 
   // TODO: Handle other generics
   if (normalizedTypeName !== typeName && isArray) {
+    const kind: ts.SyntaxKind = typeNameToKind[normalizedTypeName];
     processArrayPropertyType(
-      node, output, property, normalizedTypeName, kind, sourceFile, options,
-      types);
+      node, output, property, normalizedTypeName, kind, sourceFile, options, types);
     return;
   }
 
