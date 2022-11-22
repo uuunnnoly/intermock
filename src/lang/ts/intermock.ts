@@ -703,9 +703,35 @@ function isAnyJsDocs(jsDocs: ts.JSDoc[]) {
  * @param options Intermock general options object
  * @param types Top-level types of interfaces/aliases etc.
  */
+function processMethodSignature(
+  node: ts.Node, output: Output, sourceFile: ts.SourceFile, options: Options,
+  types: Types) {
+  const property = node.name.getText();
+  if (node.type.kind === ts.SyntaxKind.ArrayType) {
+    node.kind = node.type.elementType.kind;
+  } else {
+    node.kind = node.type.kind;
+  }
+  processFunctionPropertyType(node, output, property, sourceFile, options, types)
+}
+
+/**
+ * Process each interface property.
+ *
+ * @param node Node being processed
+ * @param output The object outputted by Intermock after all types are mocked
+ * @param sourceFile TypeScript AST object compiled from file data
+ * @param options Intermock general options object
+ * @param types Top-level types of interfaces/aliases etc.
+ */
 function traverseInterfaceMembers(
   node: ts.Node, output: Output, sourceFile: ts.SourceFile, options: Options,
   types: Types) {
+  if (node.kind === ts.SyntaxKind.MethodSignature) {
+    processMethodSignature(node, output, sourceFile, options, types);
+    return;
+  }
+
   if (node.kind !== ts.SyntaxKind.PropertySignature) {
     return;
   }
