@@ -172,12 +172,12 @@ function processFunctionPropertyType(
 
   const funcNode =
     (ts.isTypeNode(node) ? node : node.type) as ts.FunctionTypeNode;
-  const returnType = funcNode.type;
+  const returnType = funcNode.type as any;
 
   switch (returnType.kind) {
     case ts.SyntaxKind.TypeReference:
       const tempBody: Record<string, {}> = {};
-      const typeName: ts.Identifier = returnType.getText();
+      const typeName: string = returnType.getText();
       processPropertyTypeReference(
         node, tempBody, 'body', typeName,
         returnType.kind, sourceFile, options, types);
@@ -230,11 +230,7 @@ function processIndexedAccessPropertyType(
     }
   }
 
-  const isPrimitiveType = kind === ts.SyntaxKind.StringKeyword ||
-    kind === ts.SyntaxKind.NumberKeyword ||
-    kind === ts.SyntaxKind.BooleanKeyword;
-
-  if (isPrimitiveType && kind) {
+  if (isPrimitiveType(kind) && kind) {
     output[property] = generatePrimitive(indexType, kind, options);
   } else {
     // TODO
@@ -317,11 +313,8 @@ function processPropertyTypeReference(
       const record = (types[normalizedTypeName] as TypeCacheRecord);
       if (record.kind !== record.aliasedTo) {
         const alias = record.aliasedTo;
-        const isPrimitiveType = alias === ts.SyntaxKind.StringKeyword ||
-          alias === ts.SyntaxKind.NumberKeyword ||
-          alias === ts.SyntaxKind.BooleanKeyword;
 
-        if (isPrimitiveType) {
+        if (isPrimitiveType(alias)) {
           output[property] = generatePrimitive(property, alias, options, '');
         } else if (alias === ts.SyntaxKind.UnionType) {
           let parameters: string[] = [];
@@ -365,6 +358,9 @@ function processPropertyTypeReference(
         } else if (alias === ts.SyntaxKind.TypeLiteral) {
           output[property] = {};
           processFile(sourceFile, output[property], options, types, typeName);
+        } else if (alias === ts.SyntaxKind.TypeReference) { 
+          const typeName = (record.node as ts.TypeAliasDeclaration).type.getText();
+          processPropertyTypeReference(node, output, property, typeName, kind, sourceFile, options, types);
         } else {
           // TODO
         }
@@ -374,6 +370,12 @@ function processPropertyTypeReference(
         break;
       }
   }
+}
+
+function isPrimitiveType(type?: ts.SyntaxKind) {
+  return type === ts.SyntaxKind.StringKeyword ||
+  type === ts.SyntaxKind.NumberKeyword ||
+  type === ts.SyntaxKind.BooleanKeyword;
 }
 
 /**
@@ -477,16 +479,13 @@ function resolveArrayType(
     kind = (node.type as ts.ArrayTypeNode).elementType.kind;
   }
 
-  const isPrimitiveType = kind === ts.SyntaxKind.StringKeyword ||
-    kind === ts.SyntaxKind.BooleanKeyword ||
-    kind === ts.SyntaxKind.NumberKeyword;
   const isTypeReference = kind === ts.SyntaxKind.TypeReference;
   const arrayRange = options.isFixedMode ?
     FIXED_ARRAY_COUNT :
     randomRange(DEFAULT_ARRAY_RANGE[0], DEFAULT_ARRAY_RANGE[1]);
 
   for (let i = 0; i < arrayRange; i++) {
-    if (isPrimitiveType) {
+    if (isPrimitiveType(kind)) {
       result.push(generatePrimitive(property, kind, options, ''));
     }
     else if (isTypeReference) {
@@ -704,7 +703,7 @@ function isAnyJsDocs(jsDocs: ts.JSDoc[]) {
  * @param types Top-level types of interfaces/aliases etc.
  */
 function processMethodSignature(
-  node: ts.Node, output: Output, sourceFile: ts.SourceFile, options: Options,
+  node: any, output: Output, sourceFile: ts.SourceFile, options: Options,
   types: Types) {
   const property = node.name.getText();
   if (node.type.kind === ts.SyntaxKind.ArrayType) {

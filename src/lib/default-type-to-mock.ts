@@ -45,6 +45,6 @@ export const typeNameToKind: { [key: string]: ts.SyntaxKind } = {
   'string': ts.SyntaxKind.StringKeyword,
   'boolean': ts.SyntaxKind.BooleanKeyword,
   'object': ts.SyntaxKind.ObjectKeyword,
-  'any': ts.SyntaxKind.default.SyntaxKind.NumberKeyword | ts.SyntaxKind.StringKeyword | ts.SyntaxKind.BooleanKeyword,
+  'any': ts.SyntaxKind.NumberKeyword | ts.SyntaxKind.StringKeyword | ts.SyntaxKind.BooleanKeyword,
 }
 /* tslint:enable */
