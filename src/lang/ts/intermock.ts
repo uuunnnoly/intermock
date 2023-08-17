@@ -357,7 +357,8 @@ function processPropertyTypeReference(
           }
         } else if (alias === ts.SyntaxKind.TypeLiteral) {
           output[property] = {};
-          processFile(sourceFile, output[property], options, types, typeName);
+          const typeName = (record.node as ts.TypeAliasDeclaration).name.getText();
+          traverseInterface((record.node as ts.TypeAliasDeclaration).type, output[property], sourceFile, options, types, typeName);
         } else if (alias === ts.SyntaxKind.TypeReference) { 
           const typeName = (record.node as ts.TypeAliasDeclaration).type.getText();
           processPropertyTypeReference(node, output, property, typeName, kind, sourceFile, options, types);
