@@ -366,7 +366,7 @@ function processPropertyTypeReference(
         }
       } else {
         output[property] = {};
-        processFile(sourceFile, output[property], options, types, typeName);
+        traverseInterface(record.node, output[property], sourceFile, options, types, typeName);
         break;
       }
   }
