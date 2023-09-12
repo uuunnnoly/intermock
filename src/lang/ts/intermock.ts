@@ -237,6 +237,13 @@ function processIndexedAccessPropertyType(
   }
 }
 
+enum NodeType {
+  Array = 'array',
+  Promise = 'promise',
+  Object = 'object',
+  Other = 'other',
+}
+
 /**
  * Process an individual interface property.
  *
@@ -253,27 +260,30 @@ function processPropertyTypeReference(
   node: ts.PropertySignature | ts.TypeNode, output: Output, property: string,
   typeName: string, kind: ts.SyntaxKind, sourceFile: ts.SourceFile,
   options: Options, types: Types) {
+  let type: NodeType;
   let normalizedTypeName: string;
-  let isArray = false;
-  let isPromise = false;
 
   if (typeName.startsWith('Array<') || typeName.startsWith('IterableArray<')) {
     normalizedTypeName =
       typeName.replace(/(Array|IterableArray)\</, '').replace('>', '');
-    isArray = true;
+    type = NodeType.Array;
   } else if (typeName.startsWith('Promise<')) {
     normalizedTypeName =
       typeName.replace(/Promise\</, '').replace('>', '');
-    isPromise = true;
+    type = NodeType.Promise;
+  } else if (typeName.startsWith('Record<')) {
+    normalizedTypeName =
+      typeName.replace(/Record\</, '').replace('>', '');
+    type = NodeType.Object;
   } else {
     normalizedTypeName = typeName;
+    type = NodeType.Other;
   }
 
   const typeReference: ts.NodeWithTypeArguments | undefined =
     (node as ts.MappedTypeNode).type;
-  if (!isArray && typeReference && typeReference.typeArguments &&
+  if (type !== NodeType.Array && type !== NodeType.Object && typeReference && typeReference.typeArguments &&
     typeReference.typeArguments.length) {
-    console.log('generic');
     // Process Generic
     normalizedTypeName =
       ((typeReference as ts.TypeReferenceNode).typeName as ts.Identifier)
@@ -281,16 +291,23 @@ function processPropertyTypeReference(
   }
 
   // TODO: Handle other generics
-  if (normalizedTypeName !== typeName && isArray) {
-    const kind: ts.SyntaxKind = typeNameToKind[normalizedTypeName];
-    processArrayPropertyType(
-      node, output, property, normalizedTypeName, kind, sourceFile, options, types);
-    return;
-  }
-
-  if (normalizedTypeName !== typeName && isPromise) {
-    processPromisePropertyType(
-      node, output, property, normalizedTypeName, kind, sourceFile, options, types);
+  if (normalizedTypeName !== typeName) {
+    switch (type) {
+      case NodeType.Array:
+        processArrayPropertyType(
+          node, output, property, normalizedTypeName, typeNameToKind[normalizedTypeName], sourceFile, options, types);
+        break;
+      case NodeType.Promise:
+        processPromisePropertyType(
+          node, output, property, normalizedTypeName, kind, sourceFile, options, types);
+        break;
+      case NodeType.Object:
+        processRecordPropertyType(
+          node, output, property, normalizedTypeName, kind, sourceFile, options, types);
+        break;
+      default:
+        break;
+    }
     return;
   }
 
@@ -359,7 +376,7 @@ function processPropertyTypeReference(
           output[property] = {};
           const typeName = (record.node as ts.TypeAliasDeclaration).name.getText();
           traverseInterface((record.node as ts.TypeAliasDeclaration).type, output[property], sourceFile, options, types, typeName);
-        } else if (alias === ts.SyntaxKind.TypeReference) { 
+        } else if (alias === ts.SyntaxKind.TypeReference) {
           const typeName = (record.node as ts.TypeAliasDeclaration).type.getText();
           processPropertyTypeReference(node, output, property, typeName, kind, sourceFile, options, types);
         } else {
@@ -375,8 +392,8 @@ function processPropertyTypeReference(
 
 function isPrimitiveType(type?: ts.SyntaxKind) {
   return type === ts.SyntaxKind.StringKeyword ||
-  type === ts.SyntaxKind.NumberKeyword ||
-  type === ts.SyntaxKind.BooleanKeyword;
+    type === ts.SyntaxKind.NumberKeyword ||
+    type === ts.SyntaxKind.BooleanKeyword;
 }
 
 /**
@@ -443,6 +460,21 @@ function processPromisePropertyType(
     ? resolveArrayType(node, property, typeName, kind, sourceFile, options, types)
     : generatePrimitive(property, kind, options);
   output[property] = `Promise.reslove(${JSON.stringify(mock)})`;
+}
+
+function processRecordPropertyType(
+  node: ts.PropertySignature | ts.TypeNode, output: Output, property: string,
+  typeName: string, kind: ts.SyntaxKind, sourceFile: ts.SourceFile,
+  options: Options, types: Types) {
+  let typeNameArr = typeName.split(',');
+  output[property] = resolveRecordPropertyType(node, property, typeNameArr, kind, sourceFile, options, types);
+}
+
+function resolveRecordPropertyType(node: ts.PropertySignature | ts.TypeNode, property: string,
+  typeNameArr: string[], kind: ts.SyntaxKind, sourceFile: ts.SourceFile,
+  options: Options, types: Types) {
+  //todo: record property
+  return { test1: 4 }
 }
 
 /**
