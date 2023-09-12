@@ -1,10 +1,10 @@
 {
-  "name": "intermock",
-  "version": "0.2.5",
+  "name": "automock",
+  "version": "0.2.6",
   "description": "Automatically create mock objects and JSON from TypeScript interfaces via Faker",
   "repository": {
     "type": "git",
-    "url": "https://github.com/google/intermock.git"
+    "url": "https://github.com/uuunnnoly/intermock/tree/master"
   },
   "bin": {
     "intermock": "build/src/cli/index.js"
